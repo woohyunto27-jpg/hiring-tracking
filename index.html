@@ -203,20 +203,26 @@
         
         /* Table */
         .table-wrapper {
-            overflow-x: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
+            max-height: calc(100vh - 220px);
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 12px;
+            table-layout: fixed;
         }
         
         th, td {
-            padding: 10px 12px;
+            padding: 5px 6px;
             text-align: left;
             border-bottom: 1px solid var(--border);
-            vertical-align: top;
+            vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         th {
@@ -225,7 +231,27 @@
             white-space: nowrap;
             position: sticky;
             top: 0;
+            z-index: 1;
+            font-size: 11px;
+            color: var(--gray-600);
         }
+        
+        /* 列宽分配 */
+        col.col-idx { width: 36px; }
+        col.col-name { width: 60px; }
+        col.col-loc { width: 46px; }
+        col.col-phone { width: 95px; }
+        col.col-company { width: 90px; }
+        col.col-title { width: 80px; }
+        col.col-exp { width: 42px; }
+        col.col-dir { width: 56px; }
+        col.col-hr { width: 46px; }
+        col.col-status { width: 76px; }
+        col.col-hrdate { width: 82px; }
+        col.col-ecddate { width: 82px; }
+        col.col-hrfeedback { width: 140px; }
+        col.col-ecdfeedback { width: 140px; }
+        col.col-actions { width: 72px; }
         
         tr:hover {
             background: var(--gray-100);
@@ -663,24 +689,28 @@
                 
                 <div class="table-wrapper">
                     <table id="candidateTable">
+                        <colgroup>
+                            <col class="col-idx"><col class="col-name"><col class="col-loc"><col class="col-phone">
+                            <col class="col-company"><col class="col-title"><col class="col-exp"><col class="col-dir">
+                            <col class="col-hr"><col class="col-status"><col class="col-hrdate"><col class="col-ecddate">
+                            <col class="col-hrfeedback"><col class="col-ecdfeedback"><col class="col-actions">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>序号</th>
                                 <th>姓名</th>
                                 <th>地点</th>
                                 <th>手机</th>
-                                <th>邮箱</th>
                                 <th>当前公司</th>
                                 <th>当前Title</th>
-                                <th>工作年限</th>
+                                <th>年限</th>
                                 <th>方向</th>
-                                <th>沟通HR</th>
+                                <th>HR</th>
                                 <th>状态</th>
-                                <th>HR沟通时间</th>
-                                <th>ECD面试日期</th>
+                                <th>HR沟通</th>
+                                <th>ECD面试</th>
                                 <th>HR反馈</th>
                                 <th>ECD反馈</th>
-                                <th>更新时间</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -855,10 +885,6 @@
                         <div class="form-group">
                             <label>手机</label>
                             <input type="tel" id="fPhone">
-                        </div>
-                        <div class="form-group">
-                            <label>邮箱</label>
-                            <input type="email" id="fEmail">
                         </div>
                         <div class="form-group">
                             <label>当前公司</label>
@@ -1434,7 +1460,6 @@
                     <td><strong>${c.name}</strong></td>
                     <td>${c.location || ''}</td>
                     <td>${c.phone || ''}</td>
-                    <td>${c.email || ''}</td>
                     <td>${c.company || ''}</td>
                     <td>${c.title || ''}</td>
                     <td>${c.experience ? c.experience + '年' : ''}</td>
@@ -1443,9 +1468,8 @@
                     <td><span class="status ${getStatusClass(c.status)}">${c.status}</span></td>
                     <td>${c.hrPhoneDate || ''}</td>
                     <td>${c.ecdDate || ''}</td>
-                    <td><div class="editable" onclick="editInline(this, '${c.id}', 'hrFeedback')">${(c.hrFeedback || '').substring(0, 50)}${c.hrFeedback && c.hrFeedback.length > 50 ? '...' : ''}</div></td>
-                    <td><div class="editable" onclick="editInline(this, '${c.id}', 'ecdFeedback')">${(c.ecdFeedback || '').substring(0, 50)}${c.ecdFeedback && c.ecdFeedback.length > 50 ? '...' : ''}</div></td>
-                    <td>${formatDateTime(c.updatedAt)}</td>
+                    <td><div class="editable" onclick="editInline(this, '${c.id}', 'hrFeedback')" title="${(c.hrFeedback || '').replace(/"/g, '&quot;')}">${(c.hrFeedback || '').substring(0, 30)}${c.hrFeedback && c.hrFeedback.length > 30 ? '...' : ''}</div></td>
+                    <td><div class="editable" onclick="editInline(this, '${c.id}', 'ecdFeedback')" title="${(c.ecdFeedback || '').replace(/"/g, '&quot;')}">${(c.ecdFeedback || '').substring(0, 30)}${c.ecdFeedback && c.ecdFeedback.length > 30 ? '...' : ''}</div></td>
                     <td class="actions">
                         <button onclick="viewDetail('${c.id}')" title="查看详情">👁️</button>
                         <button onclick="editCandidate('${c.id}')" title="编辑">✏️</button>
@@ -1588,7 +1612,6 @@
             document.getElementById('fName').value = c.name || '';
             document.getElementById('fLocation').value = c.location || '';
             document.getElementById('fPhone').value = c.phone || '';
-            document.getElementById('fEmail').value = c.email || '';
             document.getElementById('fCompany').value = c.company || '';
             document.getElementById('fTitle').value = c.title || '';
             document.getElementById('fExperience').value = c.experience || '';
@@ -1626,7 +1649,6 @@
                         name,
                         location: document.getElementById('fLocation').value,
                         phone: document.getElementById('fPhone').value,
-                        email: document.getElementById('fEmail').value,
                         company: document.getElementById('fCompany').value,
                         title: document.getElementById('fTitle').value,
                         experience: document.getElementById('fExperience').value ? parseInt(document.getElementById('fExperience').value) : null,
@@ -1660,7 +1682,6 @@
                     name,
                     location: document.getElementById('fLocation').value,
                     phone: document.getElementById('fPhone').value,
-                    email: document.getElementById('fEmail').value,
                     company: document.getElementById('fCompany').value,
                     title: document.getElementById('fTitle').value,
                     experience: document.getElementById('fExperience').value ? parseInt(document.getElementById('fExperience').value) : null,
@@ -1747,7 +1768,6 @@
                 <div class="form-row">
                     <div class="form-group"><label>地点</label><div>${c.location || '-'}</div></div>
                     <div class="form-group"><label>手机</label><div>${c.phone || '-'}</div></div>
-                    <div class="form-group"><label>邮箱</label><div>${c.email || '-'}</div></div>
                     <div class="form-group"><label>当前公司</label><div>${c.company || '-'}</div></div>
                     <div class="form-group"><label>当前Title</label><div>${c.title || '-'}</div></div>
                     <div class="form-group"><label>工作年限</label><div>${c.experience ? c.experience + '年' : '-'}</div></div>
@@ -1780,7 +1800,6 @@
                 '姓名': c.name,
                 '地点': c.location,
                 '手机': c.phone,
-                '邮箱': c.email,
                 '当前公司': c.company,
                 '当前Title': c.title,
                 '工作年限': c.experience,
@@ -1806,7 +1825,7 @@
             ws['!cols'] = [
                 {wch: 6}, {wch: 12}, {wch: 8}, {wch: 15}, {wch: 25}, {wch: 15}, {wch: 12},
                 {wch: 8}, {wch: 8}, {wch: 12}, {wch: 15}, {wch: 30}, {wch: 30}, {wch: 20},
-                {wch: 20}, {wch: 20}, {wch: 18}, {wch: 18}
+                {wch: 20}, {wch: 18}
             ];
             
             XLSX.writeFile(wb, '华为Team候选人列表.xlsx');
@@ -1833,7 +1852,6 @@
                                 name: row['姓名'] || '',
                                 location: row['地点'] || '',
                                 phone: String(row['手机'] || ''),
-                                email: row['邮箱'] || '',
                                 company: row['当前公司'] || '',
                                 title: row['当前Title'] || '',
                                 experience: row['工作年限'] ? parseInt(row['工作年限']) : null,
