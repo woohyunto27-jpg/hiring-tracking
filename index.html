@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>华为Team 候选人管理</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #0078D4;
+            --primary-dark: #005A9E;
+            --success: #107C10;
+            --warning: #FFB900;
+            --danger: #D13438;
+            --gray-100: #F3F2F1;
+            --gray-200: #EDEBE9;
+            --gray-300: #E1DFDD;
+            --gray-600: #605E5C;
+            --gray-800: #323130;
+            --border: #E1DFDD;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-800);
+            min-height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 16px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .tab {
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        /* Card */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--gray-800);
+        }
+        
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        select, input[type="date"] {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            min-width: 120px;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-800);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--gray-300);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: var(--gray-800);
+        }
+        
+        .btn-sm {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        
+        th {
+            background: var(--gray-100);
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: var(--gray-100);
+        }
+        
+        /* Status badges */
+        .status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .status-new { background: #E8F4FD; color: #0066CC; }
+        .status-hr-pass { background: #E3F2E1; color: #107C10; }
+        .status-pushed { background: #FFF4E5; color: #B7472A; }
+        .status-ecd-pending { background: #F3E8FD; color: #7B1FA2; }
+        .status-ecd-pass { background: #E8F5E9; color: #2E7D32; }
+        .status-ecd-reject { background: #FFEBEE; color: #C62828; }
+        .status-offer { background: #E3F2FD; color: #1565C0; }
+        .status-onboarded { background: #C8E6C9; color: #2E7D32; }
+        .status-rejected { background: #FFCDD2; color: #B71C1C; }
+        
+        /* Editable cells */
+        .editable {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-height: 24px;
+            transition: background 0.2s;
+        }
+        
+        .editable:hover {
+            background: var(--gray-200);
+        }
+        
+        .editable:focus {
+            outline: 2px solid var(--primary);
+            background: white;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--gray-600);
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        /* Form */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .form-group.full {
+            grid-column: span 2;
+        }
+        
+        .form-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-600);
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-top: 4px;
+        }
+        
+        /* Week selector */
+        .week-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .week-nav button {
+            background: var(--gray-200);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .week-nav button:hover {
+            background: var(--gray-300);
+        }
+        
+        .week-nav span {
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 200px;
+            text-align: center;
+        }
+        
+        /* Cloud sync */
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .sync-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .sync-indicator.connected {
+            background: var(--success);
+        }
+        
+        .sync-indicator.disconnected {
+            background: var(--danger);
+        }
+        
+        .sync-url {
+            flex: 1;
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--gray-600);
+            word-break: break-all;
+        }
+        
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .alert-error {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .toolbar {
+                flex-direction: column;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+            
+            .filter-group {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-group.full {
+                grid-column: span 1;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+            }
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: var(--gray-800);
+            color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Actions column */
+        .actions {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .actions button {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            background: var(--gray-200);
+        }
+        
+        .actions button:hover {
+            background: var(--gray-300);
+        }
+        
+        .actions button.delete {
+            background: #FFEBEE;
+            color: var(--danger);
+        }
+        
+        /* Tag styles */
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            font-size: 11px;
+            margin: 2px;
+        }
+        
+        .tag-primary { background: #E3F2FD; color: #1565C0; }
+        .tag-success { background: #E8F5E9; color: #2E7D32; }
+        .tag-warning { background: #FFF8E1; color: #F57F17; }
+        .tag-danger { background: #FFEBEE; color: #C62828; }
+        
+        /* Direction badge */
+        .direction {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .direction-art { background: #FCE4EC; color: #C2185B; }
+        .direction-copy { background: #E3F0FF; color: #1565C0; }
+        
+        /* Hidden file input */
+        .hidden {
+            display: none;
+        }
+        
+        /* Responsive table */
+        @media (max-width: 1200px) {
+            .table-container {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 1500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>📋 华为Team 候选人管理</h1>
+        <div class="tabs">
+            <button class="tab active" data-tab="list">候选人列表</button>
+            <button class="tab" data-tab="stats">周进度看板</button>
+            <button class="tab" data-tab="settings">设置</button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- 候选人列表页 -->
+        <div id="page-list" class="page active">
+            <div class="card">
+                <div class="toolbar">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="搜索候选人姓名、公司、职位...">
+                    </div>
+                    <div class="filter-group">
+                        <select id="filterStatus">
+                            <option value="">全部状态</option>
+                            <option value="新简历">新简历</option>
+                            <option value="HR筛选通过">HR筛选通过</option>
+                            <option value="已推送ECD">已推送ECD</option>
+                            <option value="ECD待面试">ECD待面试</option>
+                            <option value="ECD面试通过">ECD面试通过</option>
+                            <option value="ECD面试淘汰">ECD面试淘汰</option>
+                            <option value="已发Offer">已发Offer</option>
+                            <option value="已入职">已入职</option>
+                            <option value="已拒绝">已拒绝</option>
+                        </select>
+                        <select id="filterDirection">
+                            <option value="">全部方向</option>
+                            <option value="Art">Art</option>
+                            <option value="Copy">Copy</option>
+                        </select>
+                        <select id="filterHR">
+                            <option value="">全部HR</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <button class="btn btn-primary" onclick="openAddModal()">+ 新增候选人</button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📥 导入Excel</button>
+                        <button class="btn btn-secondary" onclick="exportExcel()">📤 导出Excel</button>
+                        <input type="file" id="importFile" class="hidden" accept=".xlsx,.xls" onchange="importExcel(event)">
+                    </div>
+                </div>
+                
+                <div id="alertContainer"></div>
+                
+                <div class="table-wrapper">
+                    <table id="candidateTable">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>姓名</th>
+                                <th>地点</th>
+                                <th>手机</th>
+                                <th>邮箱</th>
+                                <th>当前公司</th>
+                                <th>当前Title</th>
+                                <th>工作年限</th>
+                                <th>方向</th>
+                                <th>沟通HR</th>
+                                <th>状态</th>
+                                <th>HR沟通时间</th>
+                                <th>ECD面试日期</th>
+                                <th>HR反馈</th>
+                                <th>ECD反馈</th>
+                                <th>更新时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="candidateTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 周进度看板页 -->
+        <div id="page-stats" class="page">
+            <div class="week-nav">
+                <button onclick="changeWeek(-1)">◀</button>
+                <span id="currentWeekLabel">加载中...</span>
+                <button onclick="changeWeek(1)">▶</button>
+            </div>
+            
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-new">0</div>
+                    <div class="stat-label">本周新增简历</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-hr-pass">0</div>
+                    <div class="stat-label">HR筛选通过</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-pushed">0</div>
+                    <div class="stat-label">推送ECD</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-ecd-passed">0</div>
+                    <div class="stat-label">ECD已回复</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-ecd-pending">0</div>
+                    <div class="stat-label">ECD待回复</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-interviews">0</div>
+                    <div class="stat-label">本周面试</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-rejected">0</div>
+                    <div class="stat-label">Reject</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-offers">0</div>
+                    <div class="stat-label">Offer</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-onboarded">0</div>
+                    <div class="stat-label">入职</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">本周状态变更记录</h3>
+                <div id="statusChangeList" class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>候选人</th>
+                                <th>变更类型</th>
+                                <th>原状态</th>
+                                <th>新状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statusChangeBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 设置页 -->
+        <div id="page-settings" class="page">
+            <div class="card">
+                <h3 class="card-title">云同步设置</h3>
+                <div class="sync-status" id="syncStatus">
+                    <div class="sync-indicator disconnected"></div>
+                    <span id="syncStatusText">未连接云同步</span>
+                </div>
+                
+                <div id="syncSetup" style="margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label>JSONBin API Key (用于创建新存储)</label>
+                        <input type="password" id="apiKey" placeholder="输入您的 JSONBin API Key">
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label>已有Bin ID (用于加入现有存储)</label>
+                        <input type="text" id="binId" placeholder="输入Bin ID">
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label>管理员密钥 (创建新Bin时设置)</label>
+                        <input type="password" id="masterKey" placeholder="设置管理员密钥">
+                    </div>
+                    <button class="btn btn-primary" style="margin-top: 16px;" onclick="connectCloud()">连接云同步</button>
+                    <button class="btn btn-secondary" style="margin-top: 16px;" onclick="disconnectCloud()">断开连接</button>
+                </div>
+                
+                <div id="syncConnected" style="display: none;">
+                    <div class="form-group">
+                        <label>共享链接</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="shareUrl" readonly style="flex: 1; font-family: monospace;">
+                            <button class="btn btn-primary" onclick="copyShareUrl()">复制</button>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; color: var(--gray-600); margin-top: 8px;">
+                        分享此链接给其他recruiter，他们可以查看和编辑数据。
+                    </p>
+                    <button class="btn btn-danger" style="margin-top: 16px;" onclick="disconnectCloud()">断开连接</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">权限设置</h3>
+                <div class="form-group">
+                    <label>您的角色</label>
+                    <select id="userRole">
+                        <option value="admin">管理员 (可管理云同步)</option>
+                        <option value="editor">普通编辑者</option>
+                    </select>
+                </div>
+                <p style="font-size: 13px; color: var(--gray-600); margin-top: 8px;">
+                    管理员可以修改云同步设置，普通编辑者只能编辑候选人数据。
+                </p>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">数据管理</h3>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="exportLocalData()">导出本地数据为JSON</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('importJsonFile').click()">导入JSON数据</button>
+                    <button class="btn btn-danger" onclick="clearLocalData()">清空本地数据</button>
+                    <input type="file" id="importJsonFile" class="hidden" accept=".json" onchange="importJsonData(event)">
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">关于</h3>
+                <p style="font-size: 14px; color: var(--gray-600);">
+                    华为Team 候选人管理协作系统 v1.0<br>
+                    基于 JSONBin 实现云端数据同步<br>
+                    支持多用户实时协作编辑
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 新增/编辑候选人 Modal -->
+    <div class="modal-overlay" id="candidateModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">新增候选人</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="candidateForm">
+                    <input type="hidden" id="candidateId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>姓名 *</label>
+                            <input type="text" id="fName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>地点</label>
+                            <input type="text" id="fLocation">
+                        </div>
+                        <div class="form-group">
+                            <label>手机</label>
+                            <input type="tel" id="fPhone">
+                        </div>
+                        <div class="form-group">
+                            <label>邮箱</label>
+                            <input type="email" id="fEmail">
+                        </div>
+                        <div class="form-group">
+                            <label>当前公司</label>
+                            <input type="text" id="fCompany">
+                        </div>
+                        <div class="form-group">
+                            <label>当前Title</label>
+                            <input type="text" id="fTitle">
+                        </div>
+                        <div class="form-group">
+                            <label>工作年限</label>
+                            <input type="number" id="fExperience">
+                        </div>
+                        <div class="form-group">
+                            <label>方向</label>
+                            <select id="fDirection">
+                                <option value="">请选择</option>
+                                <option value="Art">Art</option>
+                                <option value="Copy">Copy</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>沟通HR</label>
+                            <select id="fHR">
+                                <option value="">请选择</option>
+                                <option value="Abby Zhu">Abby Zhu</option>
+                                <option value="Renee Ren">Renee Ren</option>
+                                <option value="Phoebe Feng">Phoebe Feng</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>状态</label>
+                            <select id="fStatus">
+                                <option value="新简历">新简历</option>
+                                <option value="HR筛选通过">HR筛选通过</option>
+                                <option value="已推送ECD">已推送ECD</option>
+                                <option value="ECD待面试">ECD待面试</option>
+                                <option value="ECD面试通过">ECD面试通过</option>
+                                <option value="ECD面试淘汰">ECD面试淘汰</option>
+                                <option value="已发Offer">已发Offer</option>
+                                <option value="已入职">已入职</option>
+                                <option value="已拒绝">已拒绝</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>HR沟通时间</label>
+                            <input type="date" id="fHRPhoneDate">
+                        </div>
+                        <div class="form-group">
+                            <label>ECD面试日期</label>
+                            <input type="date" id="fECDDate">
+                        </div>
+                        <div class="form-group full">
+                            <label>HR反馈要点</label>
+                            <textarea id="fHRFeedback"></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <label>ECD反馈要点</label>
+                            <textarea id="fECDFeedback"></textarea>
+                        </div>
+                        <div class="form-group full">
+                            <label>综合评语</label>
+                            <textarea id="fComment"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveCandidate()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 查看详情 Modal -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="detailName">候选人详情</h3>
+                <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="detailContent">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDetailModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 数据结构 ====================
+        let candidates = [];
+        let statusHistory = []; // 状态变更历史
+        let currentWeekOffset = 0;
+        let cloudConfig = {
+            connected: false,
+            apiKey: '',
+            binId: '',
+            masterKey: '',
+            role: 'admin'
+        };
+        
+        // ==================== 初始化数据 ====================
+        const DATA_VERSION = 2; // 数据版本号，用于检测缓存迁移
+        
+        const initialCandidates = [
+            {
+                id: 'c001',
+                name: '闫保罗',
+                location: '上海',
+                phone: '15038259253',
+                email: '1210208153@qq.com',
+                company: 'VML',
+                title: 'SAD',
+                experience: 8,
+                currentSalary: '25K',
+                expectedSalary: '30K',
+                expectedPosition: 'GH',
+                direction: 'Art',
+                hr: 'Abby Zhu',
+                status: 'ECD待面试',
+                hrPhoneDate: '',
+                ecdDate: '2026-05-25',
+                hrFeedback: '1.在WPP AI hub,熟悉并喜欢研究AI工具，目前还没接触过agent\n2.沟通灵活，对行业和创意都有自己的想法\n3.语言表述直白\n4.担心无法耐下心来做华为',
+                ecdFeedback: '聪明有想法的孩子， 美术功底一般，但AI可以补足一些，在对比其他人看一看',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: ['AI辅助型'],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-24T10:30:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-30T11:00:00Z'}
+                ],
+                createdAt: '2026-06-23T10:00:00Z',
+                updatedAt: '2026-06-30T11:00:00Z'
+            },
+            {
+                id: 'c002',
+                name: 'Pino Liu',
+                location: '上海',
+                phone: '18521782634',
+                email: '574752369@qq.com',
+                company: '蓝色光标',
+                title: 'SAD',
+                experience: 8,
+                currentSalary: '',
+                expectedSalary: '30K',
+                expectedPosition: 'GH',
+                direction: 'Art',
+                hr: 'Abby Zhu',
+                status: 'ECD面试淘汰',
+                hrPhoneDate: '',
+                ecdDate: '2026-06-12',
+                hrFeedback: '1.作品集看起来美术功底扎实\n2.沟通平稳，能抗压\n3.AI还是在工具应用端，没有很多时间去积极思考和研究\n4,整体风格务实性，热情不足',
+                ecdFeedback: '不行',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: ['AI辅助型'],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-17T09:30:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-22T11:00:00Z'},
+                    {from: '已推送ECD', to: 'ECD面试淘汰', time: '2026-06-28T16:00:00Z'}
+                ],
+                createdAt: '2026-06-15T09:00:00Z',
+                updatedAt: '2026-06-28T16:00:00Z'
+            },
+            {
+                id: 'c003',
+                name: '粟根宝',
+                location: '上海',
+                phone: '17301752029',
+                email: '2361948634@qq.com',
+                company: '杭州叁境智创（创业）',
+                title: 'Founder',
+                experience: 5,
+                currentSalary: '',
+                expectedSalary: '15-20K',
+                expectedPosition: 'Art Director',
+                direction: 'Art',
+                hr: 'Renee Ren',
+                status: 'ECD待面试',
+                hrPhoneDate: '',
+                ecdDate: '2026-06-12',
+                hrFeedback: '1.目前是个人工作室，可以用AI接活儿，熟悉agent的使用和搭建\n2.沟通成熟，对于AI的发展有自己的想法和思考',
+                ecdFeedback: '美术功底一般，无法做前期提案的工作，后期执行需要leverage AI技能时可以考虑free的形式合作',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: ['AI生产型', '跨领域复合型'],
+                weaknesses: ['作品集薄弱'],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-24T14:00:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-29T14:00:00Z'}
+                ],
+                createdAt: '2026-06-22T11:00:00Z',
+                updatedAt: '2026-06-29T14:00:00Z'
+            },
+            {
+                id: 'c004',
+                name: '任宪亮',
+                location: '北京',
+                phone: '18611366772',
+                email: 'xianliangren555@gmail.com',
+                company: 'xiaomi (裁员）',
+                title: '高级视觉设计',
+                experience: 8,
+                currentSalary: '33K',
+                expectedSalary: '33K',
+                expectedPosition: 'GH',
+                direction: '',
+                hr: 'Phoebe Feng',
+                status: 'HR筛选通过',
+                hrPhoneDate: '',
+                ecdDate: '',
+                hrFeedback: '',
+                ecdFeedback: '',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: [],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-30T10:00:00Z'}
+                ],
+                createdAt: '2026-06-29T14:00:00Z',
+                updatedAt: '2026-06-30T10:00:00Z'
+            },
+            {
+                id: 'c005',
+                name: '宋晨露',
+                location: '北京',
+                phone: '',
+                email: '',
+                company: '',
+                title: '',
+                experience: null,
+                currentSalary: '',
+                expectedSalary: '',
+                expectedPosition: 'ACD',
+                direction: '',
+                hr: 'Renee Ren',
+                status: '已入职',
+                hrPhoneDate: '',
+                ecdDate: '',
+                hrFeedback: '',
+                ecdFeedback: '',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: [],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-03T09:30:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-05T14:00:00Z'},
+                    {from: '已推送ECD', to: 'ECD面试通过', time: '2026-06-08T16:00:00Z'},
+                    {from: 'ECD面试通过', to: '已发Offer', time: '2026-06-10T10:00:00Z'},
+                    {from: '已发Offer', to: '已入职', time: '2026-06-15T09:00:00Z'}
+                ],
+                createdAt: '2026-06-01T09:00:00Z',
+                updatedAt: '2026-06-15T09:00:00Z'
+            },
+            {
+                id: 'c006',
+                name: '付晟',
+                location: '北京',
+                phone: '',
+                email: '',
+                company: '',
+                title: '',
+                experience: null,
+                currentSalary: '',
+                expectedSalary: '',
+                expectedPosition: '',
+                direction: '',
+                hr: 'Renee Ren',
+                status: '已发Offer',
+                hrPhoneDate: '',
+                ecdDate: '',
+                hrFeedback: '',
+                ecdFeedback: '',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: [],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-12T09:30:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-15T14:00:00Z'},
+                    {from: '已推送ECD', to: 'ECD面试通过', time: '2026-06-18T16:00:00Z'},
+                    {from: 'ECD面试通过', to: '已发Offer', time: '2026-06-25T10:00:00Z'}
+                ],
+                createdAt: '2026-06-10T10:00:00Z',
+                updatedAt: '2026-06-25T10:00:00Z'
+            },
+            {
+                id: 'c007',
+                name: '时爽',
+                location: '北京',
+                phone: '',
+                email: '',
+                company: '',
+                title: '',
+                experience: null,
+                currentSalary: '',
+                expectedSalary: '',
+                expectedPosition: '',
+                direction: '',
+                hr: 'Renee Ren',
+                status: 'ECD面试淘汰',
+                hrPhoneDate: '',
+                ecdDate: '',
+                hrFeedback: '',
+                ecdFeedback: '跳槽频率高，GAP时间长',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: [],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-14T09:30:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-18T14:00:00Z'},
+                    {from: '已推送ECD', to: 'ECD面试淘汰', time: '2026-06-22T16:00:00Z'}
+                ],
+                createdAt: '2026-06-12T14:00:00Z',
+                updatedAt: '2026-06-22T16:00:00Z'
+            },
+            {
+                id: 'c008',
+                name: 'Lincinda Liu',
+                location: '上海',
+                phone: '13775370609',
+                email: '',
+                company: '麦肯',
+                title: 'GH',
+                experience: null,
+                currentSalary: '30K',
+                expectedSalary: '30K',
+                expectedPosition: 'GH',
+                direction: 'Copy',
+                hr: 'Phoebe Feng',
+                status: '已推送ECD',
+                hrPhoneDate: '2026-06-22',
+                ecdDate: '',
+                hrFeedback: '在休息， 快消互联网美妆/ 离职是欧莱雅太搞 / 还想看GH； 作品思路很清爽有质感，人还蛮务实的；',
+                ecdFeedback: '',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: [],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-22T10:00:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-30T09:00:00Z'}
+                ],
+                createdAt: '2026-06-20T16:00:00Z',
+                updatedAt: '2026-06-30T09:00:00Z'
+            },
+            {
+                id: 'c009',
+                name: '王文卿',
+                location: '上海',
+                phone: '13815487372',
+                email: 'estawenqing@163.com',
+                company: 'Belkin',
+                title: '视觉设计',
+                experience: 3,
+                currentSalary: '27K',
+                expectedSalary: '33K',
+                expectedPosition: 'GH',
+                direction: 'Art',
+                hr: 'Phoebe Feng',
+                status: 'ECD面试淘汰',
+                hrPhoneDate: '2026-06-30',
+                ecdDate: '',
+                hrFeedback: 'art sense还可以，不stable 讲话很随意，没有commitment和稳定性 ',
+                ecdFeedback: '',
+                comment: '',
+                portfolioQuality: null,
+                aiAbility: null,
+                creativeAbility: null,
+                netSense: null,
+                culturalFit: null,
+                strengths: [],
+                weaknesses: [],
+                statusHistory: [
+                    {from: '新简历', to: 'HR筛选通过', time: '2026-06-30T11:00:00Z'},
+                    {from: 'HR筛选通过', to: '已推送ECD', time: '2026-06-25T14:00:00Z'},
+                    {from: '已推送ECD', to: 'ECD面试淘汰', time: '2026-06-29T15:00:00Z'}
+                ],
+                createdAt: '2026-06-20T11:00:00Z',
+                updatedAt: '2026-06-29T15:00:00Z'
+            }
+        ];
+        
+        // ==================== 工具函数 ====================
+        function generateId() {
+            return 'c' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+        
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        }
+        
+        function getWeekNumber(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+        
+        function getWeekDateRange(offset = 0) {
+            const now = new Date();
+            const dayOfWeek = now.getDay() || 7;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - dayOfWeek + 1 + offset * 7);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            return {
+                start: monday,
+                end: sunday,
+                label: `${monday.getFullYear()}年 第${getWeekNumber(monday)}周`,
+                year: monday.getFullYear(),
+                week: getWeekNumber(monday)
+            };
+        }
+        
+        function isInWeek(dateStr, weekOffset) {
+            if (!dateStr) return false;
+            const date = new Date(dateStr);
+            const week = getWeekDateRange(weekOffset);
+            return date >= week.start && date <= week.end;
+        }
+        
+        function showToast(message, duration = 2000) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), duration);
+        }
+        
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertContainer');
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => container.innerHTML = '', 3000);
+        }
+        
+        function getStatusClass(status) {
+            const map = {
+                '新简历': 'status-new',
+                'HR筛选通过': 'status-hr-pass',
+                '已推送ECD': 'status-pushed',
+                'ECD待面试': 'status-ecd-pending',
+                'ECD面试通过': 'status-ecd-pass',
+                'ECD面试淘汰': 'status-ecd-reject',
+                '已发Offer': 'status-offer',
+                '已入职': 'status-onboarded',
+                '已拒绝': 'status-rejected'
+            };
+            return map[status] || 'status-new';
+        }
+        
+        function getDirectionClass(dir) {
+            if (dir === 'Art') return 'direction-art';
+            if (dir === 'Copy') return 'direction-copy';
+            return '';
+        }
+        
+        // ==================== 数据存储 ====================
+        function loadData() {
+            const saved = localStorage.getItem('huawei_candidates');
+            const savedVersion = parseInt(localStorage.getItem('huawei_data_version') || '0', 10);
+            
+            if (saved && savedVersion === DATA_VERSION) {
+                candidates = JSON.parse(saved);
+                // 逐条补齐可能缺失的字段（兼容小版本升级）
+                let needsPatch = false;
+                candidates.forEach(c => {
+                    if (c.hrPhoneDate === undefined) { c.hrPhoneDate = ''; needsPatch = true; }
+                    if (c.ecdDate === undefined) { c.ecdDate = ''; needsPatch = true; }
+                });
+                if (needsPatch) saveData();
+            } else {
+                // 版本不匹配或无缓存，使用初始数据覆盖
+                if (saved && savedVersion !== DATA_VERSION) {
+                    console.log(`数据版本升级 v${savedVersion} → v${DATA_VERSION}，已重置为初始数据`);
+                }
+                candidates = JSON.parse(JSON.stringify(initialCandidates));
+                localStorage.setItem('huawei_data_version', String(DATA_VERSION));
+                saveData();
+            }
+            
+            const savedConfig = localStorage.getItem('huawei_cloud_config');
+            if (savedConfig) {
+                cloudConfig = JSON.parse(savedConfig);
+                updateSyncUI();
+            }
+        }
+        
+        function saveData() {
+            localStorage.setItem('huawei_candidates', JSON.stringify(candidates));
+            if (cloudConfig.connected) {
+                syncToCloud();
+            }
+        }
+        
+        function saveCloudConfig() {
+            localStorage.setItem('huawei_cloud_config', JSON.stringify(cloudConfig));
+        }
+        
+        // ==================== 渲染函数 ====================
+        function renderTable() {
+            const tbody = document.getElementById('candidateTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filterStatus = document.getElementById('filterStatus').value;
+            const filterDirection = document.getElementById('filterDirection').value;
+            const filterHR = document.getElementById('filterHR').value;
+            
+            let filtered = candidates.filter(c => {
+                if (!c.name) return false;
+                const matchSearch = !search || 
+                    c.name.toLowerCase().includes(search) ||
+                    (c.company && c.company.toLowerCase().includes(search)) ||
+                    (c.title && c.title.toLowerCase().includes(search));
+                const matchStatus = !filterStatus || c.status === filterStatus;
+                const matchDirection = !filterDirection || c.direction === filterDirection;
+                const matchHR = !filterHR || c.hr === filterHR;
+                return matchSearch && matchStatus && matchDirection && matchHR;
+            });
+            
+            // 更新HR筛选选项
+            updateHRFilter();
+            
+            tbody.innerHTML = filtered.map((c, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><strong>${c.name}</strong></td>
+                    <td>${c.location || ''}</td>
+                    <td>${c.phone || ''}</td>
+                    <td>${c.email || ''}</td>
+                    <td>${c.company || ''}</td>
+                    <td>${c.title || ''}</td>
+                    <td>${c.experience ? c.experience + '年' : ''}</td>
+                    <td>${c.direction ? `<span class="direction ${getDirectionClass(c.direction)}">${c.direction}</span>` : ''}</td>
+                    <td>${c.hr || ''}</td>
+                    <td><span class="status ${getStatusClass(c.status)}">${c.status}</span></td>
+                    <td>${c.hrPhoneDate || ''}</td>
+                    <td>${c.ecdDate || ''}</td>
+                    <td><div class="editable" onclick="editInline(this, '${c.id}', 'hrFeedback')">${(c.hrFeedback || '').substring(0, 50)}${c.hrFeedback && c.hrFeedback.length > 50 ? '...' : ''}</div></td>
+                    <td><div class="editable" onclick="editInline(this, '${c.id}', 'ecdFeedback')">${(c.ecdFeedback || '').substring(0, 50)}${c.ecdFeedback && c.ecdFeedback.length > 50 ? '...' : ''}</div></td>
+                    <td>${formatDateTime(c.updatedAt)}</td>
+                    <td class="actions">
+                        <button onclick="viewDetail('${c.id}')" title="查看详情">👁️</button>
+                        <button onclick="editCandidate('${c.id}')" title="编辑">✏️</button>
+                        <button class="delete" onclick="deleteCandidate('${c.id}')" title="删除">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function updateHRFilter() {
+            const select = document.getElementById('filterHR');
+            const hrs = [...new Set(candidates.filter(c => c.hr).map(c => c.hr))];
+            const current = select.value;
+            select.innerHTML = '<option value="">全部HR</option>' + 
+                hrs.map(hr => `<option value="${hr}">${hr}</option>`).join('');
+            select.value = current;
+        }
+        
+        function renderStats() {
+            const week = getWeekDateRange(currentWeekOffset);
+            document.getElementById('currentWeekLabel').textContent = week.label;
+            
+            // 统计本周数据
+            let stats = {
+                new: 0,
+                hrPass: 0,
+                pushed: 0,
+                ecdPassed: 0,
+                ecdPending: 0,
+                interviews: 0,
+                rejected: 0,
+                offers: 0,
+                onboarded: 0
+            };
+            
+            let changes = [];
+            
+            candidates.forEach(c => {
+                // 本周新增
+                if (isInWeek(c.createdAt, currentWeekOffset)) {
+                    stats.new++;
+                }
+                
+                // 状态变更统计
+                if (c.statusHistory && Array.isArray(c.statusHistory)) {
+                    c.statusHistory.forEach(h => {
+                        if (isInWeek(h.time, currentWeekOffset)) {
+                            const changeType = getChangeType(h.from, h.to);
+                            if (changeType) {
+                                changes.push({
+                                    time: h.time,
+                                    name: c.name,
+                                    type: changeType,
+                                    from: h.from,
+                                    to: h.to
+                                });
+                            }
+                            
+                            // 更新本周统计
+                            switch(h.to) {
+                                case 'HR筛选通过': stats.hrPass++; break;
+                                case '已推送ECD': stats.pushed++; break;
+                                case 'ECD面试通过': stats.ecdPassed++; break;
+                                case 'ECD待面试': stats.ecdPending++; break;
+                                case 'ECD面试淘汰': stats.rejected++; break;
+                                case '已发Offer': stats.offers++; break;
+                                case '已入职': stats.onboarded++; break;
+                            }
+                        }
+                    });
+                }
+            });
+            
+            // 更新统计卡片
+            document.getElementById('stat-new').textContent = stats.new;
+            document.getElementById('stat-hr-pass').textContent = stats.hrPass;
+            document.getElementById('stat-pushed').textContent = stats.pushed;
+            document.getElementById('stat-ecd-passed').textContent = stats.ecdPassed;
+            document.getElementById('stat-ecd-pending').textContent = stats.ecdPending;
+            document.getElementById('stat-interviews').textContent = stats.ecdPassed + stats.ecdPending;
+            document.getElementById('stat-rejected').textContent = stats.rejected;
+            document.getElementById('stat-offers').textContent = stats.offers;
+            document.getElementById('stat-onboarded').textContent = stats.onboarded;
+            
+            // 渲染变更记录
+            const tbody = document.getElementById('statusChangeBody');
+            if (changes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-600);">本周暂无状态变更记录</td></tr>';
+            } else {
+                tbody.innerHTML = changes
+                    .sort((a, b) => new Date(b.time) - new Date(a.time))
+                    .map(c => `
+                        <tr>
+                            <td>${formatDateTime(c.time)}</td>
+                            <td>${c.name}</td>
+                            <td>${c.type}</td>
+                            <td><span class="status ${getStatusClass(c.from)}">${c.from}</span></td>
+                            <td><span class="status ${getStatusClass(c.to)}">${c.to}</span></td>
+                        </tr>
+                    `).join('');
+            }
+        }
+        
+        function getChangeType(from, to) {
+            if (!from && to) return '新增';
+            const transitions = {
+                '新简历->HR筛选通过': 'HR筛选通过',
+                'HR筛选通过->已推送ECD': '推送ECD',
+                '已推送ECD->ECD待面试': '安排面试',
+                '已推送ECD->ECD面试通过': 'ECD通过',
+                '已推送ECD->ECD面试淘汰': 'ECD淘汰',
+                'ECD待面试->ECD面试通过': 'ECD通过',
+                'ECD待面试->ECD面试淘汰': 'ECD淘汰',
+                'ECD面试通过->已发Offer': '发Offer',
+                '已发Offer->已入职': '入职',
+                '已发Offer->已拒绝': '拒绝Offer'
+            };
+            return transitions[`${from}->${to}`] || '状态变更';
+        }
+        
+        function changeWeek(offset) {
+            currentWeekOffset += offset;
+            renderStats();
+        }
+        
+        // ==================== CRUD 操作 ====================
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = '新增候选人';
+            document.getElementById('candidateForm').reset();
+            document.getElementById('candidateId').value = '';
+            document.getElementById('candidateModal').classList.add('active');
+        }
+        
+        function editCandidate(id) {
+            const c = candidates.find(x => x.id === id);
+            if (!c) return;
+            
+            document.getElementById('modalTitle').textContent = '编辑候选人';
+            document.getElementById('candidateId').value = c.id;
+            document.getElementById('fName').value = c.name || '';
+            document.getElementById('fLocation').value = c.location || '';
+            document.getElementById('fPhone').value = c.phone || '';
+            document.getElementById('fEmail').value = c.email || '';
+            document.getElementById('fCompany').value = c.company || '';
+            document.getElementById('fTitle').value = c.title || '';
+            document.getElementById('fExperience').value = c.experience || '';
+            document.getElementById('fDirection').value = c.direction || '';
+            document.getElementById('fHR').value = c.hr || '';
+            document.getElementById('fStatus').value = c.status || '新简历';
+            document.getElementById('fHRPhoneDate').value = c.hrPhoneDate || '';
+            document.getElementById('fECDDate').value = c.ecdDate || '';
+            document.getElementById('fHRFeedback').value = c.hrFeedback || '';
+            document.getElementById('fECDFeedback').value = c.ecdFeedback || '';
+            document.getElementById('fComment').value = c.comment || '';
+            
+            document.getElementById('candidateModal').classList.add('active');
+        }
+        
+        function saveCandidate() {
+            const id = document.getElementById('candidateId').value;
+            const name = document.getElementById('fName').value.trim();
+            
+            if (!name) {
+                showAlert('请输入候选人姓名', 'error');
+                return;
+            }
+            
+            const newStatus = document.getElementById('fStatus').value;
+            const now = new Date().toISOString();
+            
+            if (id) {
+                // 编辑
+                const c = candidates.find(x => x.id === id);
+                if (c) {
+                    const oldStatus = c.status;
+                    
+                    Object.assign(c, {
+                        name,
+                        location: document.getElementById('fLocation').value,
+                        phone: document.getElementById('fPhone').value,
+                        email: document.getElementById('fEmail').value,
+                        company: document.getElementById('fCompany').value,
+                        title: document.getElementById('fTitle').value,
+                        experience: document.getElementById('fExperience').value ? parseInt(document.getElementById('fExperience').value) : null,
+                        direction: document.getElementById('fDirection').value,
+                        hr: document.getElementById('fHR').value,
+                        status: newStatus,
+                        hrPhoneDate: document.getElementById('fHRPhoneDate').value,
+                        ecdDate: document.getElementById('fECDDate').value,
+                        hrFeedback: document.getElementById('fHRFeedback').value,
+                        ecdFeedback: document.getElementById('fECDFeedback').value,
+                        comment: document.getElementById('fComment').value,
+                        updatedAt: now
+                    });
+                    
+                    // 记录状态变更
+                    if (oldStatus !== newStatus) {
+                        if (!c.statusHistory) c.statusHistory = [];
+                        c.statusHistory.push({
+                            from: oldStatus,
+                            to: newStatus,
+                            time: now
+                        });
+                    }
+                    
+                    showToast('候选人已更新');
+                }
+            } else {
+                // 新增
+                const newCandidate = {
+                    id: generateId(),
+                    name,
+                    location: document.getElementById('fLocation').value,
+                    phone: document.getElementById('fPhone').value,
+                    email: document.getElementById('fEmail').value,
+                    company: document.getElementById('fCompany').value,
+                    title: document.getElementById('fTitle').value,
+                    experience: document.getElementById('fExperience').value ? parseInt(document.getElementById('fExperience').value) : null,
+                    direction: document.getElementById('fDirection').value,
+                    hr: document.getElementById('fHR').value,
+                    status: newStatus,
+                    hrPhoneDate: document.getElementById('fHRPhoneDate').value,
+                    ecdDate: document.getElementById('fECDDate').value,
+                    hrFeedback: document.getElementById('fHRFeedback').value,
+                    ecdFeedback: document.getElementById('fECDFeedback').value,
+                    comment: document.getElementById('fComment').value,
+                    portfolioQuality: null,
+                    aiAbility: null,
+                    creativeAbility: null,
+                    netSense: null,
+                    culturalFit: null,
+                    strengths: [],
+                    weaknesses: [],
+                    statusHistory: [{
+                        from: null,
+                        to: newStatus,
+                        time: now
+                    }],
+                    createdAt: now,
+                    updatedAt: now
+                };
+                candidates.push(newCandidate);
+                showToast('候选人已添加');
+            }
+            
+            closeModal();
+            saveData();
+            renderTable();
+        }
+        
+        function deleteCandidate(id) {
+            if (!confirm('确定要删除该候选人吗？')) return;
+            candidates = candidates.filter(c => c.id !== id);
+            saveData();
+            renderTable();
+            showToast('候选人已删除');
+        }
+        
+        function closeModal() {
+            document.getElementById('candidateModal').classList.remove('active');
+        }
+        
+        function editInline(el, id, field) {
+            const c = candidates.find(x => x.id === id);
+            if (!c) return;
+            
+            const currentValue = c[field] || '';
+            const input = document.createElement('textarea');
+            input.style.cssText = 'width:100%;min-height:60px;padding:8px;border:2px solid var(--primary);border-radius:4px;font-size:13px;';
+            input.value = currentValue;
+            
+            const save = () => {
+                c[field] = input.value;
+                c.updatedAt = new Date().toISOString();
+                saveData();
+                renderTable();
+            };
+            
+            input.onblur = save;
+            input.onkeydown = (e) => {
+                if (e.key === 'Escape') {
+                    renderTable();
+                }
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    save();
+                }
+            };
+            
+            el.replaceWith(input);
+            input.focus();
+        }
+        
+        function viewDetail(id) {
+            const c = candidates.find(x => x.id === id);
+            if (!c) return;
+            
+            document.getElementById('detailName').textContent = c.name + ' - 详情';
+            document.getElementById('detailContent').innerHTML = `
+                <div class="form-row">
+                    <div class="form-group"><label>地点</label><div>${c.location || '-'}</div></div>
+                    <div class="form-group"><label>手机</label><div>${c.phone || '-'}</div></div>
+                    <div class="form-group"><label>邮箱</label><div>${c.email || '-'}</div></div>
+                    <div class="form-group"><label>当前公司</label><div>${c.company || '-'}</div></div>
+                    <div class="form-group"><label>当前Title</label><div>${c.title || '-'}</div></div>
+                    <div class="form-group"><label>工作年限</label><div>${c.experience ? c.experience + '年' : '-'}</div></div>
+                    <div class="form-group"><label>方向</label><div>${c.direction || '-'}</div></div>
+                    <div class="form-group"><label>沟通HR</label><div>${c.hr || '-'}</div></div>
+                    <div class="form-group"><label>状态</label><div><span class="status ${getStatusClass(c.status)}">${c.status}</span></div></div>
+                </div>
+                <div class="form-group"><label>HR沟通时间</label><div>${c.hrPhoneDate || '未记录'}</div></div>
+                <div class="form-group"><label>ECD面试日期</label><div>${c.ecdDate || '未记录'}</div></div>
+                <div class="form-group"><label>HR反馈要点</label><div style="white-space:pre-wrap;">${c.hrFeedback || '无'}</div></div>
+                <div class="form-group"><label>ECD反馈要点</label><div style="white-space:pre-wrap;">${c.ecdFeedback || '无'}</div></div>
+                <div class="form-group"><label>综合评语</label><div style="white-space:pre-wrap;">${c.comment || '无'}</div></div>
+                <div class="form-group"><label>优势标签</label><div>${c.strengths && c.strengths.length ? c.strengths.map(s => `<span class="tag tag-success">${s}</span>`).join('') : '无'}</div></div>
+                <div class="form-group"><label>不足标签</label><div>${c.weaknesses && c.weaknesses.length ? c.weaknesses.map(w => `<span class="tag tag-danger">${w}</span>`).join('') : '无'}</div></div>
+                <div class="form-group"><label>创建时间</label><div>${formatDateTime(c.createdAt)}</div></div>
+                <div class="form-group"><label>更新时间</label><div>${formatDateTime(c.updatedAt)}</div></div>
+            `;
+            
+            document.getElementById('detailModal').classList.add('active');
+        }
+        
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+        
+        // ==================== Excel 导入导出 ====================
+        function exportExcel() {
+            const data = candidates.map((c, i) => ({
+                '序号': i + 1,
+                '姓名': c.name,
+                '地点': c.location,
+                '手机': c.phone,
+                '邮箱': c.email,
+                '当前公司': c.company,
+                '当前Title': c.title,
+                '工作年限': c.experience,
+                '方向': c.direction,
+                '沟通HR': c.hr,
+                '状态': c.status,
+                'HR沟通时间': c.hrPhoneDate,
+                'ECD面试日期': c.ecdDate,
+                'HR反馈': c.hrFeedback,
+                'ECD反馈': c.ecdFeedback,
+                '综合评语': c.comment,
+                '优势标签': c.strengths ? c.strengths.join(', ') : '',
+                '不足标签': c.weaknesses ? c.weaknesses.join(', ') : '',
+                '创建时间': formatDateTime(c.createdAt),
+                '更新时间': formatDateTime(c.updatedAt)
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '候选人列表');
+            
+            // 设置列宽
+            ws['!cols'] = [
+                {wch: 6}, {wch: 12}, {wch: 8}, {wch: 15}, {wch: 25}, {wch: 15}, {wch: 12},
+                {wch: 8}, {wch: 8}, {wch: 12}, {wch: 15}, {wch: 30}, {wch: 30}, {wch: 20},
+                {wch: 20}, {wch: 20}, {wch: 18}, {wch: 18}
+            ];
+            
+            XLSX.writeFile(wb, '华为Team候选人列表.xlsx');
+            showToast('Excel已导出');
+        }
+        
+        function importExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+                    
+                    let imported = 0;
+                    json.forEach(row => {
+                        if (row['姓名']) {
+                            const candidate = {
+                                id: generateId(),
+                                name: row['姓名'] || '',
+                                location: row['地点'] || '',
+                                phone: String(row['手机'] || ''),
+                                email: row['邮箱'] || '',
+                                company: row['当前公司'] || '',
+                                title: row['当前Title'] || '',
+                                experience: row['工作年限'] ? parseInt(row['工作年限']) : null,
+                                direction: row['方向'] || '',
+                                hr: row['沟通HR'] || '',
+                                status: row['状态'] || '新简历',
+                                hrPhoneDate: row['HR沟通时间'] || '',
+                                ecdDate: row['ECD面试日期'] || '',
+                                hrFeedback: row['HR反馈'] || '',
+                                ecdFeedback: row['ECD反馈'] || '',
+                                comment: row['综合评语'] || '',
+                                strengths: row['优势标签'] ? row['优势标签'].split(',').map(s => s.trim()).filter(s => s) : [],
+                                weaknesses: row['不足标签'] ? row['不足标签'].split(',').map(s => s.trim()).filter(s => s) : [],
+                                statusHistory: [],
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString()
+                            };
+                            
+                            // 检查是否已存在
+                            const existing = candidates.find(c => c.name === candidate.name);
+                            if (!existing) {
+                                candidates.push(candidate);
+                                imported++;
+                            }
+                        }
+                    });
+                    
+                    saveData();
+                    renderTable();
+                    showAlert(`成功导入 ${imported} 个候选人`, 'success');
+                } catch (err) {
+                    showAlert('导入失败: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+        
+        // ==================== 云同步 ====================
+        async function connectCloud() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const binId = document.getElementById('binId').value.trim();
+            const masterKey = document.getElementById('masterKey').value.trim();
+            
+            if (!apiKey) {
+                showAlert('请输入API Key', 'error');
+                return;
+            }
+            
+            try {
+                if (binId) {
+                    // 加入已有存储
+                    const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+                        headers: { 'X-Access-Key': apiKey }
+                    });
+                    
+                    if (!response.ok) throw new Error('Bin不存在或无权访问');
+                    
+                    const result = await response.json();
+                    
+                    // 导入云端数据
+                    if (result.record && result.record.candidates) {
+                        if (candidates.length > 0 && !confirm('云端有数据，是否覆盖本地数据？')) {
+                            return;
+                        }
+                        candidates = result.record.candidates;
+                        saveData();
+                        renderTable();
+                    }
+                    
+                    cloudConfig = {
+                        connected: true,
+                        apiKey,
+                        binId,
+                        masterKey: masterKey || '',
+                        role: 'editor'
+                    };
+                } else {
+                    // 创建新存储
+                    const data = { candidates, version: Date.now() };
+                    const response = await fetch('https://api.jsonbin.io/v3/b', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Access-Key': apiKey,
+                            'X-Master-Key': masterKey || apiKey
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (!response.ok) throw new Error('创建失败');
+                    
+                    const result = await response.json();
+                    cloudConfig = {
+                        connected: true,
+                        apiKey,
+                        binId: result.metadata.id,
+                        masterKey: masterKey || apiKey,
+                        role: 'admin'
+                    };
+                }
+                
+                saveCloudConfig();
+                updateSyncUI();
+                showAlert('云同步连接成功', 'success');
+            } catch (err) {
+                showAlert('连接失败: ' + err.message, 'error');
+            }
+        }
+        
+        async function disconnectCloud() {
+            cloudConfig.connected = false;
+            saveCloudConfig();
+            updateSyncUI();
+            showAlert('已断开云同步', 'success');
+        }
+        
+        async function syncToCloud() {
+            if (!cloudConfig.connected || !cloudConfig.binId) return;
+            
+            try {
+                const data = { candidates, version: Date.now() };
+                await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Access-Key': cloudConfig.apiKey,
+                        'X-Master-Key': cloudConfig.masterKey
+                    },
+                    body: JSON.stringify(data)
+                });
+            } catch (err) {
+                console.error('Sync failed:', err);
+            }
+        }
+        
+        async function pullFromCloud() {
+            if (!cloudConfig.connected || !cloudConfig.binId) return;
+            
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}/latest`, {
+                    headers: { 'X-Access-Key': cloudConfig.apiKey }
+                });
+                
+                if (!response.ok) return;
+                
+                const result = await response.json();
+                if (result.record && result.record.candidates) {
+                    candidates = result.record.candidates;
+                    saveData();
+                    renderTable();
+                    renderStats();
+                }
+            } catch (err) {
+                console.error('Pull failed:', err);
+            }
+        }
+        
+        function updateSyncUI() {
+            const statusEl = document.getElementById('syncStatus');
+            const statusText = document.getElementById('syncStatusText');
+            const setupEl = document.getElementById('syncSetup');
+            const connectedEl = document.getElementById('syncConnected');
+            const indicator = statusEl.querySelector('.sync-indicator');
+            
+            if (cloudConfig.connected) {
+                indicator.className = 'sync-indicator connected';
+                statusText.textContent = `已连接: ${cloudConfig.binId}`;
+                setupEl.style.display = 'none';
+                connectedEl.style.display = 'block';
+                document.getElementById('shareUrl').value = `${window.location.origin}${window.location.pathname}?bin=${cloudConfig.binId}`;
+                document.getElementById('userRole').value = cloudConfig.role;
+                
+                // 定期拉取
+                setInterval(pullFromCloud, 30000);
+            } else {
+                indicator.className = 'sync-indicator disconnected';
+                statusText.textContent = '未连接云同步';
+                setupEl.style.display = 'block';
+                connectedEl.style.display = 'none';
+            }
+        }
+        
+        function copyShareUrl() {
+            const url = document.getElementById('shareUrl').value;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('链接已复制');
+            });
+        }
+        
+        // ==================== 本地数据管理 ====================
+        function exportLocalData() {
+            const data = JSON.stringify(candidates, null, 2);
+            const blob = new Blob([data], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '华为Team候选人数据.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('数据已导出');
+        }
+        
+        function importJsonData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (Array.isArray(data)) {
+                        candidates = data;
+                        saveData();
+                        renderTable();
+                        showAlert('数据导入成功', 'success');
+                    } else {
+                        throw new Error('数据格式错误');
+                    }
+                } catch (err) {
+                    showAlert('导入失败: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        
+        function clearLocalData() {
+            if (!confirm('确定要清空所有本地数据吗？此操作不可恢复！')) return;
+            if (!confirm('再次确认：清空后数据将无法恢复！')) return;
+            
+            candidates = [];
+            localStorage.removeItem('huawei_candidates');
+            renderTable();
+            showToast('本地数据已清空');
+        }
+        
+        // ==================== Tab 切换 ====================
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById('page-' + tab.dataset.tab).classList.add('active');
+                
+                if (tab.dataset.tab === 'stats') {
+                    renderStats();
+                }
+            });
+        });
+        
+        // ==================== 筛选监听 ====================
+        document.getElementById('searchInput').addEventListener('input', renderTable);
+        document.getElementById('filterStatus').addEventListener('change', renderTable);
+        document.getElementById('filterDirection').addEventListener('change', renderTable);
+        document.getElementById('filterHR').addEventListener('change', renderTable);
+        
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderTable();
+            
+            // 检查URL参数
+            const params = new URLSearchParams(window.location.search);
+            const binId = params.get('bin');
+            if (binId && !cloudConfig.connected) {
+                document.getElementById('binId').value = binId;
+                showAlert('检测到分享链接，请输入API Key连接', 'success');
+            }
+        });
+        
+        // 状态变更后自动同步
+        const originalSaveData = saveData;
+        saveData = function() {
+            originalSaveData();
+        };
+    </script>
+</body>
+</html>
