@@ -440,7 +440,26 @@
             padding: 16px;
             text-align: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            position: relative;
         }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .stat-card .drill-hint {
+            font-size: 11px;
+            color: var(--gray-400);
+            margin-top: 2px;
+        }
+        /* 钻取表格样式 */
+        .drill-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .drill-table th { background: var(--gray-50); padding: 8px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--gray-200); }
+        .drill-table td { padding: 8px 12px; border-bottom: 1px solid var(--gray-100); }
+        .drill-table tr:hover { background: var(--gray-50); }
+        .drill-table .drill-name { color: var(--primary); cursor: pointer; font-weight: 500; }
+        .drill-table .drill-name:hover { text-decoration: underline; }
         
         .stat-value {
             font-size: 32px;
@@ -769,41 +788,50 @@
             </div>
             
             <div class="stats-grid" id="statsGrid">
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('new')">
                     <div class="stat-value" id="stat-new">0</div>
                     <div class="stat-label">本周新增简历</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('hrPass')">
                     <div class="stat-value" id="stat-hr-pass">0</div>
                     <div class="stat-label">HR筛选通过</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('pushed')">
                     <div class="stat-value" id="stat-pushed">0</div>
                     <div class="stat-label">推送ECD</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('ecdPassed')">
                     <div class="stat-value" id="stat-ecd-passed">0</div>
                     <div class="stat-label">ECD已回复</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('ecdPending')">
                     <div class="stat-value" id="stat-ecd-pending">0</div>
                     <div class="stat-label">ECD待回复</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('interviews')">
                     <div class="stat-value" id="stat-interviews">0</div>
                     <div class="stat-label">本周面试</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('rejected')">
                     <div class="stat-value" id="stat-rejected">0</div>
                     <div class="stat-label">Reject</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('offers')">
                     <div class="stat-value" id="stat-offers">0</div>
                     <div class="stat-label">Offer</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" onclick="drillStat('onboarded')">
                     <div class="stat-value" id="stat-onboarded">0</div>
                     <div class="stat-label">入职</div>
+                    <div class="drill-hint">点击查看详情</div>
                 </div>
             </div>
             
@@ -1006,6 +1034,8 @@
                 </form>
             </div>
             <div class="modal-footer">
+                <button class="btn btn-danger" id="modalDeleteBtn" onclick="deleteFromModal()" style="display:none;">🗑️ 删除此候选人</button>
+                <div style="flex:1;"></div>
                 <button class="btn btn-secondary" onclick="closeModal()">取消</button>
                 <button class="btn btn-primary" onclick="saveCandidate()">保存</button>
             </div>
@@ -1026,6 +1056,21 @@
             </div>
         </div>
     </div>
+    
+    <!-- 钻取弹窗 -->
+    <div class="modal-overlay" id="drillModal">
+        <div class="modal" style="max-width:600px;">
+            <div class="modal-header">
+                <h3 id="drillTitle">详情</h3>
+                <button class="modal-close" onclick="closeDrillModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="drillContent" style="padding:0;">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDrillModal()">关闭</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // ==================== 数据结构 ====================
@@ -1041,7 +1086,7 @@
         };
         
         // ==================== 初始化数据 ====================
-        const DATA_VERSION = 7; // 数据版本号，用于检测缓存迁移
+        const DATA_VERSION = 8; // 数据版本号，用于检测缓存迁移
         
         const initialCandidates = [
             {
@@ -1613,6 +1658,36 @@
                 }
             });
             
+            // 收集钻取数据
+            const drillData = {
+                new: [], hrPass: [], pushed: [], ecdPassed: [], ecdPending: [],
+                interviews: [], rejected: [], offers: [], onboarded: []
+            };
+            
+            // 用和上面统计相同的逻辑收集候选人
+            candidates.forEach(c => {
+                if (isInWeek(c.createdAt, currentWeekOffset)) {
+                    drillData.new.push({ name: c.name, id: c.id, status: c.status, hr: c.hr, direction: c.direction });
+                }
+                if (c.statusHistory && Array.isArray(c.statusHistory)) {
+                    c.statusHistory.forEach(h => {
+                        if (isInWeek(h.time, currentWeekOffset)) {
+                            const item = { name: c.name, id: c.id, status: h.to, from: h.from, hr: c.hr, direction: c.direction, time: h.time };
+                            switch(h.to) {
+                                case 'HR筛选通过': drillData.hrPass.push(item); break;
+                                case '已推送ECD': drillData.pushed.push(item); break;
+                                case 'ECD面试通过': drillData.ecdPassed.push(item); break;
+                                case 'ECD待面试': drillData.ecdPending.push(item); break;
+                                case 'ECD面试淘汰': drillData.rejected.push(item); break;
+                                case '已发Offer': drillData.offers.push(item); break;
+                                case '已入职': drillData.onboarded.push(item); break;
+                            }
+                        }
+                    });
+                }
+            });
+            drillData.interviews = [...drillData.ecdPassed, ...drillData.ecdPending];
+            
             // 更新统计卡片
             document.getElementById('stat-new').textContent = stats.new;
             document.getElementById('stat-hr-pass').textContent = stats.hrPass;
@@ -1623,6 +1698,9 @@
             document.getElementById('stat-rejected').textContent = stats.rejected;
             document.getElementById('stat-offers').textContent = stats.offers;
             document.getElementById('stat-onboarded').textContent = stats.onboarded;
+            
+            // 保存钻取数据（供点击卡片时查看）
+            window._drillData = drillData;
             
             // 渲染变更记录
             const tbody = document.getElementById('statusChangeBody');
@@ -1665,11 +1743,53 @@
             renderStats();
         }
         
+        function drillStat(type) {
+            const data = window._drillData;
+            if (!data) return;
+            const list = data[type];
+            if (!list || list.length === 0) {
+                showAlert('本周暂无相关数据', 'info');
+                return;
+            }
+            
+            const labelMap = {
+                new: '本周新增简历', hrPass: 'HR筛选通过', pushed: '推送ECD',
+                ecdPassed: 'ECD面试通过', ecdPending: 'ECD待回复',
+                interviews: '本周面试', rejected: 'Reject', offers: 'Offer', onboarded: '入职'
+            };
+            
+            document.getElementById('drillTitle').textContent = `${labelMap[type] || '详情'}（${list.length}人）`;
+            
+            let html = '<table class="drill-table"><thead><tr>';
+            html += '<th>姓名</th><th>HR</th><th>方向</th><th>状态</th>';
+            if (type !== 'new') html += '<th>变更时间</th>';
+            html += '</tr></thead><tbody>';
+            
+            list.forEach(item => {
+                html += '<tr>';
+                html += `<td class="drill-name" onclick="closeDrillModal();showDetail('${item.id}')">${item.name}</td>`;
+                html += `<td>${item.hr || '-'}</td>`;
+                html += `<td>${item.direction || '-'}</td>`;
+                html += `<td><span class="status ${getStatusClass(item.status)}">${item.status || '-'}</span></td>`;
+                if (type !== 'new') html += `<td>${item.time ? formatDateTime(item.time) : '-'}</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('drillContent').innerHTML = html;
+            document.getElementById('drillModal').classList.add('active');
+        }
+        
+        function closeDrillModal() {
+            document.getElementById('drillModal').classList.remove('active');
+        }
+        
         // ==================== CRUD 操作 ====================
         function openAddModal() {
             document.getElementById('modalTitle').textContent = '新增候选人';
             document.getElementById('candidateForm').reset();
             document.getElementById('candidateId').value = '';
+            document.getElementById('modalDeleteBtn').style.display = 'none';
             document.getElementById('candidateModal').classList.add('active');
         }
         
@@ -1696,7 +1816,21 @@
             document.getElementById('fECDFeedback').value = c.ecdFeedback || '';
             document.getElementById('fComment').value = c.comment || '';
             
+            document.getElementById('modalDeleteBtn').style.display = 'inline-block';
             document.getElementById('candidateModal').classList.add('active');
+        }
+        
+        function deleteFromModal() {
+            const id = document.getElementById('candidateId').value;
+            if (!id) return;
+            const name = document.getElementById('fName').value || '该候选人';
+            if (!confirm(`确定要删除「${name}」吗？此操作不可恢复。`)) return;
+            candidates = candidates.filter(c => c.id !== id);
+            saveData();
+            renderTable();
+            renderStats();
+            closeModal();
+            showToast('候选人已删除');
         }
         
         function saveCandidate() {
