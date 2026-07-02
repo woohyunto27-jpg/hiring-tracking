@@ -671,7 +671,7 @@
 <body>
     <!-- Header -->
     <header class="header">
-        <h1>📋 华为Team 候选人管理<span id="syncBadge" class="sync-badge offline"><span class="dot"></span><span id="syncBadgeText">未连接</span></span></h1>
+        <h1>📋 华为Team 候选人管理<span id="syncBadge" class="sync-badge offline"><span class="dot"></span><span id="syncBadgeText">未连接</span></span><button id="cloudRefreshBtn" onclick="manualCloudPull()" style="margin-left:12px; padding:4px 12px; font-size:13px; background:#10b981; color:#fff; border:none; border-radius:6px; cursor:pointer; display:none; vertical-align:middle;" title="拉取同事的最新更新">🔄 刷新云端</button></h1>
         <div class="tabs">
             <button class="tab active" data-tab="list">候选人列表</button>
             <button class="tab" data-tab="stats">周进度看板</button>
@@ -2018,6 +2018,17 @@
             }
         }
         
+        async function manualCloudPull() {
+            const btn = document.getElementById('cloudRefreshBtn');
+            if (btn) { btn.textContent = '⏳ 拉取中...'; btn.disabled = true; }
+            const success = await pullFromCloud(false);
+            if (success) {
+                renderTable();
+                renderStats();
+            }
+            if (btn) { btn.textContent = '🔄 刷新云端'; btn.disabled = false; }
+        }
+        
         async function manualPush() {
             showToast('正在推送...');
             await syncToCloud(false);
@@ -2138,17 +2149,25 @@
                 statusText.textContent = `已连接: ${cloudConfig.binId}`;
                 setupEl.style.display = 'none';
                 connectedEl.style.display = 'block';
+                // 显示主界面刷新按钮
+                const refreshBtn = document.getElementById('cloudRefreshBtn');
+                if (refreshBtn) refreshBtn.style.display = 'inline-block';
                 const shareToken = btoa(JSON.stringify({b: cloudConfig.binId, k: cloudConfig.masterKey || cloudConfig.apiKey}));
                 document.getElementById('shareUrl').value = `${window.location.origin}${window.location.pathname}?t=${shareToken}`;
                 document.getElementById('userRole').value = cloudConfig.role;
                 
-                // 定期拉取
-                setInterval(pullFromCloud, 30000);
+                // 定期拉取并刷新界面
+                setInterval(async () => {
+                    const ok = await pullFromCloud(true);
+                    if (ok) { renderTable(); renderStats(); }
+                }, 15000);
             } else {
                 indicator.className = 'sync-indicator disconnected';
                 statusText.textContent = '未连接云同步';
                 setupEl.style.display = 'block';
                 connectedEl.style.display = 'none';
+                const refreshBtn = document.getElementById('cloudRefreshBtn');
+                if (refreshBtn) refreshBtn.style.display = 'none';
             }
         }
         
