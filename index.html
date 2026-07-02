@@ -814,17 +814,14 @@
                 </div>
                 
                 <div id="syncSetup" style="margin-bottom: 16px;">
+                    <div style="background: #E8F4FD; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 13px; color: #0066CC;">
+                        💡 <strong>只需一步：</strong>输入你的 JSONBin API Key 即可创建云同步。<br>
+                        创建后生成的协作链接可直接发给同事，同事无需注册，打开即同步。<br>
+                        <a href="https://jsonbin.io" target="_blank" style="color: #0066CC;">→ 点此免费注册 JSONBin</a>
+                    </div>
                     <div class="form-group">
-                        <label>JSONBin API Key (用于创建新存储)</label>
-                        <input type="password" id="apiKey" placeholder="输入您的 JSONBin API Key">
-                    </div>
-                    <div class="form-group" style="margin-top: 12px;">
-                        <label>已有Bin ID (用于加入现有存储)</label>
-                        <input type="text" id="binId" placeholder="输入Bin ID">
-                    </div>
-                    <div class="form-group" style="margin-top: 12px;">
-                        <label>管理员密钥 (创建新Bin时设置)</label>
-                        <input type="password" id="masterKey" placeholder="设置管理员密钥">
+                        <label>JSONBin API Key</label>
+                        <input type="password" id="apiKey" placeholder="输入你的 JSONBin API Key">
                     </div>
                     <button class="btn btn-primary" style="margin-top: 16px;" onclick="connectCloud()">连接云同步</button>
                     <button class="btn btn-secondary" style="margin-top: 16px;" onclick="disconnectCloud()">断开连接</button>
@@ -832,15 +829,15 @@
                 
                 <div id="syncConnected" style="display: none;">
                     <div class="form-group">
-                        <label>共享链接</label>
+                        <label>🔗 同事协作链接（一键连接，无需注册）</label>
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" id="shareUrl" readonly style="flex: 1; font-family: monospace;">
-                            <button class="btn btn-primary" onclick="copyShareUrl()">复制</button>
+                            <input type="text" id="shareUrl" readonly style="flex: 1; font-family: monospace; font-size: 12px;">
+                            <button class="btn btn-primary" onclick="copyShareUrl()">复制链接</button>
                         </div>
+                        <p style="font-size: 12px; color: var(--gray-600); margin-top: 6px;">
+                            ⚡ 同事打开此链接后会自动连接云同步，无需注册任何账号。请将此链接通过安全渠道发送给同事。
+                        </p>
                     </div>
-                    <p style="font-size: 13px; color: var(--gray-600); margin-top: 8px;">
-                        分享此链接给其他recruiter，他们需要用自己的 JSONBin API Key 连接同一个 Bin。
-                    </p>
                     <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
                         <button class="btn btn-primary" onclick="manualPush()">📤 手动推送到云端</button>
                         <button class="btn btn-secondary" onclick="manualPull()">📥 从云端拉取</button>
@@ -1022,7 +1019,7 @@
         };
         
         // ==================== 初始化数据 ====================
-        const DATA_VERSION = 5; // 数据版本号，用于检测缓存迁移
+        const DATA_VERSION = 6; // 数据版本号，用于检测缓存迁移
         
         const initialCandidates = [
             {
@@ -1947,8 +1944,6 @@
         // ==================== 云同步 ====================
         async function connectCloud() {
             const apiKey = document.getElementById('apiKey').value.trim();
-            const binId = document.getElementById('binId').value.trim();
-            const masterKey = document.getElementById('masterKey').value.trim();
             
             if (!apiKey) {
                 showAlert('请输入API Key', 'error');
@@ -1956,61 +1951,35 @@
             }
             
             try {
-                if (binId) {
-                    // 加入已有存储
-                    const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-                        headers: { 'X-Access-Key': apiKey }
-                    });
-                    
-                    if (!response.ok) throw new Error('Bin不存在或无权访问');
-                    
-                    const result = await response.json();
-                    
-                    // 导入云端数据
-                    if (result.record && result.record.candidates) {
-                        if (candidates.length > 0 && !confirm('云端有数据，是否覆盖本地数据？')) {
-                            return;
-                        }
-                        candidates = result.record.candidates;
-                        saveData();
-                        renderTable();
-                    }
-                    
-                    cloudConfig = {
-                        connected: true,
-                        apiKey,
-                        binId,
-                        masterKey: masterKey || apiKey,
-                        role: 'editor'
-                    };
-                } else {
-                    // 创建新存储
-                    const data = { candidates, version: Date.now() };
-                    const response = await fetch('https://api.jsonbin.io/v3/b', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Access-Key': apiKey,
-                            'X-Master-Key': masterKey || apiKey
-                        },
-                        body: JSON.stringify(data)
-                    });
-                    
-                    if (!response.ok) throw new Error('创建失败');
-                    
-                    const result = await response.json();
-                    cloudConfig = {
-                        connected: true,
-                        apiKey,
-                        binId: result.metadata.id,
-                        masterKey: masterKey || apiKey,
-                        role: 'admin'
-                    };
+                // 创建新存储
+                const data = { candidates, version: Date.now() };
+                const response = await fetch('https://api.jsonbin.io/v3/b', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Access-Key': apiKey,
+                        'X-Master-Key': apiKey
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error('创建失败: ' + errText.substring(0, 200));
                 }
+                
+                const result = await response.json();
+                cloudConfig = {
+                    connected: true,
+                    apiKey,
+                    binId: result.metadata.id,
+                    masterKey: apiKey,
+                    role: 'admin'
+                };
                 
                 saveCloudConfig();
                 updateSyncUI();
-                showAlert('云同步连接成功', 'success');
+                showAlert('✅ 云同步连接成功！复制下方的协作链接发给同事即可。', 'success');
             } catch (err) {
                 showAlert('连接失败: ' + err.message, 'error');
             }
@@ -2114,7 +2083,8 @@
                 statusText.textContent = `已连接: ${cloudConfig.binId}`;
                 setupEl.style.display = 'none';
                 connectedEl.style.display = 'block';
-                document.getElementById('shareUrl').value = `${window.location.origin}${window.location.pathname}?bin=${cloudConfig.binId}`;
+                const shareToken = btoa(JSON.stringify({b: cloudConfig.binId, k: cloudConfig.masterKey || cloudConfig.apiKey}));
+                document.getElementById('shareUrl').value = `${window.location.origin}${window.location.pathname}?t=${shareToken}`;
                 document.getElementById('userRole').value = cloudConfig.role;
                 
                 // 定期拉取
@@ -2209,9 +2179,34 @@
             
             // 检查URL参数
             const params = new URLSearchParams(window.location.search);
-            const binId = params.get('bin');
-            if (binId && !cloudConfig.connected) {
-                document.getElementById('binId').value = binId;
+            const shareToken = params.get('t');
+            const legacyBinId = params.get('bin');
+            
+            if (shareToken && !cloudConfig.connected) {
+                // 新版一键连接链接
+                try {
+                    const decoded = JSON.parse(atob(shareToken));
+                    if (decoded.b && decoded.k) {
+                        cloudConfig = {
+                            connected: true,
+                            apiKey: decoded.k,
+                            binId: decoded.b,
+                            masterKey: decoded.k,
+                            role: 'editor'
+                        };
+                        saveCloudConfig();
+                        updateSyncUI();
+                        showAlert('✅ 已通过分享链接自动连接云同步！', 'success');
+                        // 自动拉取数据
+                        setTimeout(() => pullFromCloud(true), 500);
+                    }
+                } catch(e) {
+                    console.error('Invalid share token:', e);
+                    showAlert('分享链接无效，请重新获取', 'error');
+                }
+            } else if (legacyBinId && !cloudConfig.connected) {
+                // 兼容旧版链接
+                document.getElementById('binId').value = legacyBinId;
                 showAlert('检测到分享链接，请输入API Key连接', 'success');
             }
             
