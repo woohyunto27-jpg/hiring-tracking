@@ -839,8 +839,13 @@
                         </div>
                     </div>
                     <p style="font-size: 13px; color: var(--gray-600); margin-top: 8px;">
-                        分享此链接给其他recruiter，他们可以查看和编辑数据。
+                        分享此链接给其他recruiter，他们需要用自己的 JSONBin API Key 连接同一个 Bin。
                     </p>
+                    <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="manualPush()">📤 手动推送到云端</button>
+                        <button class="btn btn-secondary" onclick="manualPull()">📥 从云端拉取</button>
+                    </div>
+                    <div id="lastSyncInfo" style="font-size: 12px; color: var(--gray-600); margin-top: 8px;"></div>
                     <button class="btn btn-danger" style="margin-top: 16px;" onclick="disconnectCloud()">断开连接</button>
                 </div>
             </div>
@@ -1017,7 +1022,7 @@
         };
         
         // ==================== 初始化数据 ====================
-        const DATA_VERSION = 4; // 数据版本号，用于检测缓存迁移
+        const DATA_VERSION = 5; // 数据版本号，用于检测缓存迁移
         
         const initialCandidates = [
             {
@@ -1975,7 +1980,7 @@
                         connected: true,
                         apiKey,
                         binId,
-                        masterKey: masterKey || '',
+                        masterKey: masterKey || apiKey,
                         role: 'editor'
                     };
                 } else {
@@ -2011,6 +2016,16 @@
             }
         }
         
+        async function manualPush() {
+            showToast('正在推送...');
+            await syncToCloud(false);
+        }
+        
+        async function manualPull() {
+            showToast('正在拉取...');
+            await pullFromCloud(false);
+        }
+        
         async function disconnectCloud() {
             cloudConfig.connected = false;
             saveCloudConfig();
@@ -2018,34 +2033,50 @@
             showAlert('已断开云同步', 'success');
         }
         
-        async function syncToCloud() {
-            if (!cloudConfig.connected || !cloudConfig.binId) return;
+        async function syncToCloud(silent = true) {
+            if (!cloudConfig.connected || !cloudConfig.binId) return false;
             
             try {
                 const data = { candidates, version: Date.now() };
-                await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}`, {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': cloudConfig.masterKey || cloudConfig.apiKey
+                };
+                const resp = await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Access-Key': cloudConfig.apiKey,
-                        'X-Master-Key': cloudConfig.masterKey
-                    },
+                    headers: headers,
                     body: JSON.stringify(data)
                 });
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    throw new Error(`HTTP ${resp.status}: ${errText.substring(0, 200)}`);
+                }
+                cloudConfig.lastSync = new Date().toLocaleString('zh-CN');
+                saveCloudConfig();
+                updateSyncUI();
+                if (!silent) showToast('✅ 已推送到云端');
+                return true;
             } catch (err) {
                 console.error('Sync failed:', err);
+                if (!silent) {
+                    showAlert('同步失败: ' + err.message, 'error');
+                }
+                return false;
             }
         }
         
-        async function pullFromCloud() {
-            if (!cloudConfig.connected || !cloudConfig.binId) return;
+        async function pullFromCloud(silent = true) {
+            if (!cloudConfig.connected || !cloudConfig.binId) return false;
             
             try {
                 const response = await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}/latest`, {
-                    headers: { 'X-Access-Key': cloudConfig.apiKey }
+                    headers: { 'X-Master-Key': cloudConfig.masterKey || cloudConfig.apiKey }
                 });
                 
-                if (!response.ok) return;
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText.substring(0, 200)}`);
+                }
                 
                 const result = await response.json();
                 if (result.record && result.record.candidates) {
@@ -2053,9 +2084,21 @@
                     saveData();
                     renderTable();
                     renderStats();
+                    cloudConfig.lastSync = new Date().toLocaleString('zh-CN');
+                    saveCloudConfig();
+                    updateSyncUI();
+                    if (!silent) showToast('✅ 已从云端拉取最新数据');
+                    return true;
+                } else {
+                    if (!silent) showToast('云端暂无数据');
+                    return false;
                 }
             } catch (err) {
                 console.error('Pull failed:', err);
+                if (!silent) {
+                    showAlert('拉取失败: ' + err.message, 'error');
+                }
+                return false;
             }
         }
         
@@ -2160,7 +2203,7 @@
         document.getElementById('filterHR').addEventListener('change', renderTable);
         
         // ==================== 初始化 ====================
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             loadData();
             renderTable();
             
@@ -2170,6 +2213,16 @@
             if (binId && !cloudConfig.connected) {
                 document.getElementById('binId').value = binId;
                 showAlert('检测到分享链接，请输入API Key连接', 'success');
+            }
+            
+            // 如果已连接云同步，自动拉取最新数据
+            if (cloudConfig.connected && cloudConfig.binId) {
+                setTimeout(async () => {
+                    const success = await pullFromCloud(true);
+                    if (success) {
+                        console.log('自动拉取云端数据成功');
+                    }
+                }, 500);
             }
         });
         
