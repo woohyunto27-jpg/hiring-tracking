@@ -237,21 +237,23 @@
         }
         
         /* 列宽分配 */
-        col.col-idx { width: 36px; }
-        col.col-name { width: 60px; }
-        col.col-loc { width: 46px; }
-        col.col-phone { width: 95px; }
-        col.col-company { width: 90px; }
-        col.col-title { width: 80px; }
-        col.col-exp { width: 42px; }
-        col.col-dir { width: 56px; }
-        col.col-hr { width: 46px; }
+        col.col-idx { width: 30px; }
+        col.col-name { width: 55px; }
+        col.col-loc { width: 40px; }
+        col.col-phone { width: 85px; }
+        col.col-company { width: 75px; }
+        col.col-title { width: 70px; }
+        col.col-exp { width: 38px; }
+        col.col-dir { width: 50px; }
+        col.col-hr { width: 42px; }
         col.col-status { width: 76px; }
-        col.col-hrdate { width: 82px; }
-        col.col-ecddate { width: 82px; }
-        col.col-hrfeedback { width: 140px; }
-        col.col-ecdfeedback { width: 140px; }
-        col.col-actions { width: 72px; }
+        col.col-cursalary { width: 65px; }
+        col.col-expsalary { width: 65px; }
+        col.col-hrdate { width: 75px; }
+        col.col-ecddate { width: 75px; }
+        col.col-hrfeedback { width: 100px; }
+        col.col-ecdfeedback { width: 100px; }
+        col.col-actions { width: 65px; }
         
         tr:hover {
             background: var(--gray-100);
@@ -276,6 +278,10 @@
         .status-offer { background: #E3F2FD; color: #1565C0; }
         .status-onboarded { background: #C8E6C9; color: #2E7D32; }
                 .status-rejected { background: #FFCDD2; color: #B71C1C; }
+        .status-candidate-reject { background: #FFF3E0; color: #E65100; }
+        .status-hr-fail { background: #FBE9E7; color: #BF360C; }
+        .status-ecd-pending-decision { background: #FFFDE7; color: #F57F17; }
+        .status-ecd-screen-fail { background: #FCE4EC; color: #AD1457; }
         .status-candidate-reject { background: #FFF3E0; color: #E65100; }
         .status-hr-fail { background: #FBE9E7; color: #BF360C; }
         .status-ecd-pending-decision { background: #FFFDE7; color: #F57F17; }
@@ -700,7 +706,8 @@
                         <colgroup>
                             <col class="col-idx"><col class="col-name"><col class="col-loc"><col class="col-phone">
                             <col class="col-company"><col class="col-title"><col class="col-exp"><col class="col-dir">
-                            <col class="col-hr"><col class="col-status"><col class="col-hrdate"><col class="col-ecddate">
+                            <col class="col-hr"><col class="col-status"><col class="col-cursalary"><col class="col-expsalary">
+                            <col class="col-hrdate"><col class="col-ecddate">
                             <col class="col-hrfeedback"><col class="col-ecdfeedback"><col class="col-actions">
                         </colgroup>
                         <thead>
@@ -715,6 +722,8 @@
                                 <th>方向</th>
                                 <th>HR</th>
                                 <th>状态</th>
+                                <th>目前薪资</th>
+                                <th>希望薪资</th>
                                 <th>HR沟通</th>
                                 <th>ECD面试</th>
                                 <th>HR反馈</th>
@@ -942,6 +951,14 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label>目前薪资</label>
+                            <input type="text" id="fCurrentSalary" placeholder="如 25K">
+                        </div>
+                        <div class="form-group">
+                            <label>希望薪资</label>
+                            <input type="text" id="fExpectedSalary" placeholder="如 30K">
+                        </div>
+                        <div class="form-group">
                             <label>HR沟通时间</label>
                             <input type="date" id="fHRPhoneDate">
                         </div>
@@ -1000,7 +1017,7 @@
         };
         
         // ==================== 初始化数据 ====================
-        const DATA_VERSION = 3; // 数据版本号，用于检测缓存迁移
+        const DATA_VERSION = 4; // 数据版本号，用于检测缓存迁移
         
         const initialCandidates = [
             {
@@ -1482,6 +1499,8 @@
                     <td>${c.direction ? `<span class="direction ${getDirectionClass(c.direction)}">${c.direction}</span>` : ''}</td>
                     <td>${c.hr || ''}</td>
                     <td><span class="status ${getStatusClass(c.status)}">${c.status}</span></td>
+                    <td>${c.currentSalary || ''}</td>
+                    <td>${c.expectedSalary || ''}</td>
                     <td>${c.hrPhoneDate || ''}</td>
                     <td>${c.ecdDate || ''}</td>
                     <td><div class="editable" onclick="editInline(this, '${c.id}', 'hrFeedback')" title="${(c.hrFeedback || '').replace(/"/g, '&quot;')}">${(c.hrFeedback || '').substring(0, 30)}${c.hrFeedback && c.hrFeedback.length > 30 ? '...' : ''}</div></td>
@@ -1634,6 +1653,8 @@
             document.getElementById('fDirection').value = c.direction || '';
             document.getElementById('fHR').value = c.hr || '';
             document.getElementById('fStatus').value = c.status || '新简历';
+            document.getElementById('fCurrentSalary').value = c.currentSalary || '';
+            document.getElementById('fExpectedSalary').value = c.expectedSalary || '';
             document.getElementById('fHRPhoneDate').value = c.hrPhoneDate || '';
             document.getElementById('fECDDate').value = c.ecdDate || '';
             document.getElementById('fHRFeedback').value = c.hrFeedback || '';
@@ -1671,6 +1692,8 @@
                         direction: document.getElementById('fDirection').value,
                         hr: document.getElementById('fHR').value,
                         status: newStatus,
+                        currentSalary: document.getElementById('fCurrentSalary').value,
+                        expectedSalary: document.getElementById('fExpectedSalary').value,
                         hrPhoneDate: document.getElementById('fHRPhoneDate').value,
                         ecdDate: document.getElementById('fECDDate').value,
                         hrFeedback: document.getElementById('fHRFeedback').value,
@@ -1704,6 +1727,8 @@
                     direction: document.getElementById('fDirection').value,
                     hr: document.getElementById('fHR').value,
                     status: newStatus,
+                    currentSalary: document.getElementById('fCurrentSalary').value,
+                    expectedSalary: document.getElementById('fExpectedSalary').value,
                     hrPhoneDate: document.getElementById('fHRPhoneDate').value,
                     ecdDate: document.getElementById('fECDDate').value,
                     hrFeedback: document.getElementById('fHRFeedback').value,
@@ -1791,6 +1816,10 @@
                     <div class="form-group"><label>沟通HR</label><div>${c.hr || '-'}</div></div>
                     <div class="form-group"><label>状态</label><div><span class="status ${getStatusClass(c.status)}">${c.status}</span></div></div>
                 </div>
+                <div class="form-row">
+                    <div class="form-group"><label>目前薪资</label><div>${c.currentSalary || '未填写'}</div></div>
+                    <div class="form-group"><label>希望薪资</label><div>${c.expectedSalary || '未填写'}</div></div>
+                </div>
                 <div class="form-group"><label>HR沟通时间</label><div>${c.hrPhoneDate || '未记录'}</div></div>
                 <div class="form-group"><label>ECD面试日期</label><div>${c.ecdDate || '未记录'}</div></div>
                 <div class="form-group"><label>HR反馈要点</label><div style="white-space:pre-wrap;">${c.hrFeedback || '无'}</div></div>
@@ -1822,6 +1851,8 @@
                 '方向': c.direction,
                 '沟通HR': c.hr,
                 '状态': c.status,
+                '目前薪资': c.currentSalary,
+                '希望薪资': c.expectedSalary,
                 'HR沟通时间': c.hrPhoneDate,
                 'ECD面试日期': c.ecdDate,
                 'HR反馈': c.hrFeedback,
@@ -1840,8 +1871,8 @@
             // 设置列宽
             ws['!cols'] = [
                 {wch: 6}, {wch: 12}, {wch: 8}, {wch: 15}, {wch: 25}, {wch: 15}, {wch: 12},
-                {wch: 8}, {wch: 8}, {wch: 12}, {wch: 15}, {wch: 30}, {wch: 30}, {wch: 20},
-                {wch: 20}, {wch: 18}
+                {wch: 8}, {wch: 8}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 15}, {wch: 30},
+                {wch: 30}, {wch: 20}, {wch: 20}, {wch: 18}
             ];
             
             XLSX.writeFile(wb, '华为Team候选人列表.xlsx');
@@ -1874,6 +1905,8 @@
                                 direction: row['方向'] || '',
                                 hr: row['沟通HR'] || '',
                                 status: row['状态'] || '新简历',
+                                currentSalary: row['目前薪资'] || '',
+                                expectedSalary: row['希望薪资'] || '',
                                 hrPhoneDate: row['HR沟通时间'] || '',
                                 ecdDate: row['ECD面试日期'] || '',
                                 hrFeedback: row['HR反馈'] || '',
