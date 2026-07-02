@@ -1448,6 +1448,12 @@
         
         // ==================== 数据存储 ====================
         function loadData() {
+            // 先加载云配置（确保后续能判断是否已连接云同步）
+            const savedConfig = localStorage.getItem('huawei_cloud_config');
+            if (savedConfig) {
+                cloudConfig = JSON.parse(savedConfig);
+            }
+            
             const saved = localStorage.getItem('huawei_candidates');
             const savedVersion = parseInt(localStorage.getItem('huawei_data_version') || '0', 10);
             
@@ -1458,21 +1464,26 @@
                 candidates.forEach(c => {
                     if (c.hrPhoneDate === undefined) { c.hrPhoneDate = ''; needsPatch = true; }
                     if (c.ecdDate === undefined) { c.ecdDate = ''; needsPatch = true; }
+                    if (c.currentSalary === undefined) { c.currentSalary = ''; needsPatch = true; }
+                    if (c.expectedSalary === undefined) { c.expectedSalary = ''; needsPatch = true; }
                 });
-                if (needsPatch) saveData();
-            } else {
-                // 版本不匹配或无缓存，使用初始数据覆盖
-                if (saved && savedVersion !== DATA_VERSION) {
-                    console.log(`数据版本升级 v${savedVersion} → v${DATA_VERSION}，已重置为初始数据`);
+                if (needsPatch) {
+                    localStorage.setItem('huawei_candidates', JSON.stringify(candidates));
                 }
+            } else {
+                // 版本不匹配或无缓存
+                if (saved && savedVersion !== DATA_VERSION) {
+                    console.log(`数据版本升级 v${savedVersion} → v${DATA_VERSION}`);
+                }
+                // 重要：不从initialCandidates重置，而是用空数据 + 标记需要从云端拉取
+                // 如果有云端连接，初始化时会先拉取云端数据
                 candidates = JSON.parse(JSON.stringify(initialCandidates));
                 localStorage.setItem('huawei_data_version', String(DATA_VERSION));
-                saveData();
+                localStorage.setItem('huawei_candidates', JSON.stringify(candidates));
+                // 注意：此处不调用saveData()，避免在云拉取前就把初始数据推到云端覆盖真实数据
             }
             
-            const savedConfig = localStorage.getItem('huawei_cloud_config');
             if (savedConfig) {
-                cloudConfig = JSON.parse(savedConfig);
                 updateSyncUI();
             }
         }
@@ -2219,9 +2230,8 @@
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', async () => {
             loadData();
-            renderTable();
             
-            // 检查URL参数
+            // 检查URL参数（分享链接自动连接）
             const params = new URLSearchParams(window.location.search);
             const shareToken = params.get('t');
             const legacyBinId = params.get('bin');
@@ -2240,29 +2250,29 @@
                         };
                         saveCloudConfig();
                         updateSyncUI();
-                        showAlert('✅ 已通过分享链接自动连接云同步！', 'success');
-                        // 自动拉取数据
-                        setTimeout(() => pullFromCloud(true), 500);
                     }
                 } catch(e) {
                     console.error('Invalid share token:', e);
-                    showAlert('分享链接无效，请重新获取', 'error');
                 }
             } else if (legacyBinId && !cloudConfig.connected) {
-                // 兼容旧版链接
                 document.getElementById('binId').value = legacyBinId;
-                showAlert('检测到分享链接，请输入API Key连接', 'success');
             }
             
-            // 如果已连接云同步，自动拉取最新数据
+            // 核心：如果已连接云同步，优先从云端拉取数据（覆盖本地初始数据）
             if (cloudConfig.connected && cloudConfig.binId) {
-                setTimeout(async () => {
+                updateSyncBadge('syncing', '拉取云端数据...');
+                try {
                     const success = await pullFromCloud(true);
                     if (success) {
                         console.log('自动拉取云端数据成功');
                     }
-                }, 500);
+                } catch(e) {
+                    console.error('Auto pull failed:', e);
+                }
             }
+            
+            // 渲染页面
+            renderTable();
         });
         
         // 状态变更后自动同步
