@@ -1084,6 +1084,8 @@
             masterKey: '',
             role: 'admin'
         };
+        let _pullInterval = null;  // 单一拉取定时器
+        let _syncing = false;      // 防止重入锁
         
         // ==================== 初始化数据 ====================
         const DATA_VERSION = 8; // 数据版本号，用于检测缓存迁移
@@ -2176,7 +2178,7 @@
         async function disconnectCloud() {
             cloudConfig.connected = false;
             saveCloudConfig();
-            updateSyncUI();
+            // removed to avoid interval cascade
             showAlert('已断开云同步', 'success');
         }
         
@@ -2197,8 +2199,10 @@
         
         async function syncToCloud(silent = true) {
             if (!cloudConfig.connected || !cloudConfig.binId) return false;
+            if (_syncing) return false;
+            _syncing = true;
             
-            updateSyncBadge('syncing', '同步中...');
+            if (!silent) updateSyncBadge('syncing', '同步中...');
             
             try {
                 const data = { candidates, version: Date.now(), syncedAt: new Date().toISOString() };
@@ -2216,17 +2220,19 @@
                     throw new Error(`HTTP ${resp.status}: ${errText.substring(0, 200)}`);
                 }
                 cloudConfig.lastSync = new Date().toLocaleString('zh-CN');
-                saveCloudConfig();
+                localStorage.setItem('huawei_cloud_config', JSON.stringify(cloudConfig));
                 updateSyncUI();
                 updateSyncBadge('synced', `已同步 ${cloudConfig.lastSync}`);
                 if (!silent) showToast('✅ 已推送到云端');
+                _syncing = false;
                 return true;
             } catch (err) {
                 console.error('Sync failed:', err);
-                updateSyncBadge('error', '同步失败');
                 if (!silent) {
+                    updateSyncBadge('error', '同步失败');
                     showAlert('同步失败: ' + err.message + '\n\n请检查网络连接或API Key是否有效。', 'error');
                 }
+                _syncing = false;
                 return false;
             }
         }
@@ -2247,12 +2253,12 @@
                 const result = await response.json();
                 if (result.record && result.record.candidates) {
                     candidates = result.record.candidates;
-                    saveData();
+                    localStorage.setItem('huawei_candidates', JSON.stringify(candidates));
                     renderTable();
                     renderStats();
                     cloudConfig.lastSync = new Date().toLocaleString('zh-CN');
-                    saveCloudConfig();
-                    updateSyncUI();
+                    localStorage.setItem('huawei_cloud_config', JSON.stringify(cloudConfig));
+                    // removed to avoid interval cascade
                     updateSyncBadge('synced', `已同步 ${cloudConfig.lastSync}`);
                     if (!silent) showToast('✅ 已从云端拉取最新数据');
                     return true;
@@ -2263,8 +2269,9 @@
                 }
             } catch (err) {
                 console.error('Pull failed:', err);
-                updateSyncBadge('error', '拉取失败');
+                // 自动拉取失败时静默，不更新badge避免反复跳动
                 if (!silent) {
+                    updateSyncBadge('error', '拉取失败');
                     showAlert('拉取失败: ' + err.message, 'error');
                 }
                 return false;
@@ -2290,11 +2297,11 @@
                 document.getElementById('shareUrl').value = `${window.location.origin}${window.location.pathname}?t=${shareToken}`;
                 document.getElementById('userRole').value = cloudConfig.role;
                 
-                // 定期拉取并刷新界面
-                setInterval(async () => {
-                    const ok = await pullFromCloud(true);
-                    if (ok) { renderTable(); renderStats(); }
-                }, 15000);
+                // 定期拉取（单一实例，先清除旧的）
+                if (_pullInterval) clearInterval(_pullInterval);
+                _pullInterval = setInterval(async () => {
+                    await pullFromCloud(true);
+                }, 30000);
             } else {
                 indicator.className = 'sync-indicator disconnected';
                 statusText.textContent = '未连接云同步';
